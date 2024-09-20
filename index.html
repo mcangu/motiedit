@@ -33,7 +33,8 @@
         padding: 10px;
         border-bottom: 1px solid #ddd;
       }
-      .toolbar a {
+      .toolbar a,
+      .toolbar select {
         margin: 0 10px;
       }
       .note-area {
@@ -42,9 +43,6 @@
         border: none;
         outline: none;
         overflow-y: auto;
-        height: calc(
-          100vh - 60px
-        ); /* Resta la altura de la barra de herramientas */
         font-size: 16px;
         resize: none;
       }
@@ -55,6 +53,13 @@
       }
       .active {
         background-color: #ddd !important;
+      }
+      footer {
+        background-color: green; /* Fondo verde para el footer */
+        color: white;
+        text-align: center;
+        padding: 10px;
+        font-weight: bold;
       }
     </style>
   </head>
@@ -83,6 +88,20 @@
         >
           <i class="material-icons">format_underlined</i>
         </a>
+
+        <!-- Menú desplegable para elegir el tamaño de letra -->
+        <select id="fontSizeSelector" onchange="changeFontSize(this.value)">
+          <option value="" disabled selected>Tamaño de letra</option>
+          <option value="12px">12px</option>
+          <option value="14px">14px</option>
+          <option value="16px">16px (Normal)</option>
+          <option value="18px">18px</option>
+          <option value="20px">20px</option>
+          <option value="24px">24px</option>
+          <option value="28px">28px</option>
+          <option value="32px">32px</option>
+        </select>
+
         <a class="waves-effect waves-light btn" onclick="openFile()">
           <i class="material-icons">folder_open</i>
         </a>
@@ -105,6 +124,9 @@
         data-placeholder="Escribe tu texto aquí..."
         placeholder="Escribe aquí..."
       ></div>
+
+      <!-- Footer con el texto "OM 2024" -->
+      <footer>OM 2024</footer>
 
       <!-- Input para cargar archivos -->
       <input
@@ -135,6 +157,9 @@
       // Variables para guardar el estado de la selección
       let savedSelection;
 
+      // Habilitar estilo con CSS
+      document.execCommand("styleWithCSS", true);
+
       // Función para guardar la selección actual
       function saveSelection() {
         const selection = window.getSelection();
@@ -156,6 +181,18 @@
       function toggleFormat(command, buttonId) {
         document.execCommand(command, false, null);
         updateButtonState(buttonId, command);
+      }
+
+      // Función para cambiar el tamaño de letra usando CSS
+      function changeFontSize(size) {
+        document.execCommand("fontSize", false, "7"); // Para hacer que el comando funcione.
+        var fontElements = document.getElementsByTagName("font");
+        for (var i = 0; i < fontElements.length; i++) {
+          if (fontElements[i].size == "7") {
+            fontElements[i].removeAttribute("size");
+            fontElements[i].style.fontSize = size;
+          }
+        }
       }
 
       // Actualiza el estado del botón según si el formato está activado
