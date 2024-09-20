@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bloc de Notas</title>
+    <!-- Materialize CSS -->
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css"
+      rel="stylesheet"
+    />
+    <!-- Material Icons -->
+    <link
+      href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet"
+    />
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      .fullscreen-container {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+      }
+      .toolbar {
+        display: flex;
+        justify-content: center;
+        background-color: green; /* Fondo verde */
+        padding: 10px;
+        border-bottom: 1px solid #ddd;
+      }
+      .toolbar a {
+        margin: 0 10px;
+      }
+      .note-area {
+        flex-grow: 1;
+        padding: 20px;
+        border: none;
+        outline: none;
+        overflow-y: auto;
+        height: calc(
+          100vh - 60px
+        ); /* Resta la altura de la barra de herramientas */
+        font-size: 16px;
+        resize: none;
+      }
+      .note-area.placeholder::before {
+        content: attr(data-placeholder);
+        color: #aaa;
+        pointer-events: none;
+      }
+      .active {
+        background-color: #ddd !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="fullscreen-container">
+      <!-- Barra de herramientas con iconos -->
+      <div class="toolbar">
+        <a
+          id="bold-btn"
+          class="waves-effect waves-light btn"
+          onclick="toggleFormat('bold', 'bold-btn')"
+        >
+          <i class="material-icons">format_bold</i>
+        </a>
+        <a
+          id="italic-btn"
+          class="waves-effect waves-light btn"
+          onclick="toggleFormat('italic', 'italic-btn')"
+        >
+          <i class="material-icons">format_italic</i>
+        </a>
+        <a
+          id="underline-btn"
+          class="waves-effect waves-light btn"
+          onclick="toggleFormat('underline', 'underline-btn')"
+        >
+          <i class="material-icons">format_underlined</i>
+        </a>
+        <a class="waves-effect waves-light btn" onclick="openFile()">
+          <i class="material-icons">folder_open</i>
+        </a>
+        <a class="waves-effect waves-light btn" onclick="openDocx()">
+          <i class="material-icons">description</i> Abrir DOCX
+        </a>
+        <a class="waves-effect waves-light btn" onclick="saveFile()">
+          <i class="material-icons">save</i>
+        </a>
+        <a class="waves-effect waves-light btn" onclick="exportToPDF()">
+          <i class="material-icons">picture_as_pdf</i> Exportar PDF
+        </a>
+      </div>
+
+      <!-- Área de Texto Editable en Pantalla Completa -->
+      <div
+        id="note"
+        class="note-area placeholder"
+        contenteditable="true"
+        data-placeholder="Escribe tu texto aquí..."
+        placeholder="Escribe aquí..."
+      ></div>
+
+      <!-- Input para cargar archivos -->
+      <input
+        type="file"
+        id="file-input"
+        style="display: none"
+        accept=".txt"
+        onchange="readFile(event)"
+      />
+      <!-- Input para abrir archivos DOCX -->
+      <input
+        type="file"
+        id="docx-input"
+        style="display: none"
+        accept=".docx"
+        onchange="readDocx(event)"
+      />
+    </div>
+
+    <!-- Materialize JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <!-- jsPDF para generar PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Mammoth.js para leer archivos DOCX -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
+
+    <script>
+      // Variables para guardar el estado de la selección
+      let savedSelection;
+
+      // Función para guardar la selección actual
+      function saveSelection() {
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0) {
+          savedSelection = selection.getRangeAt(0);
+        }
+      }
+
+      // Función para restaurar la selección
+      function restoreSelection() {
+        const selection = window.getSelection();
+        if (savedSelection) {
+          selection.removeAllRanges();
+          selection.addRange(savedSelection);
+        }
+      }
+
+      // Función para aplicar y desactivar formato (negrita, cursiva, subrayado)
+      function toggleFormat(command, buttonId) {
+        document.execCommand(command, false, null);
+        updateButtonState(buttonId, command);
+      }
+
+      // Actualiza el estado del botón según si el formato está activado
+      function updateButtonState(buttonId, command) {
+        const button = document.getElementById(buttonId);
+        const isActive = document.queryCommandState(command); // Verifica si el comando está activo
+        if (isActive) {
+          button.classList.add("active");
+        } else {
+          button.classList.remove("active");
+        }
+        document.getElementById("note").focus(); // Mantiene el foco en el área de texto
+      }
+
+      // Función para abrir archivos DOCX
+      function openDocx() {
+        document.getElementById("docx-input").click();
+      }
+
+      // Leer el archivo DOCX seleccionado
+      function readDocx(event) {
+        const file = event.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            const arrayBuffer = e.target.result;
+            mammoth
+              .extractRawText({ arrayBuffer: arrayBuffer })
+              .then(function (result) {
+                document.getElementById("note").innerText = result.value;
+              })
+              .catch(function (err) {
+                console.log(err);
+              });
+          };
+          reader.readAsArrayBuffer(file);
+        }
+      }
+
+      // Función para abrir el archivo de texto
+      function openFile() {
+        document.getElementById("file-input").click();
+      }
+
+      // Leer el archivo de texto seleccionado
+      function readFile(event) {
+        const file = event.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            document.getElementById("note").innerText = e.target.result;
+            checkPlaceholder();
+          };
+          reader.readAsText(file);
+        }
+      }
+
+      // Función para guardar el archivo utilizando el administrador de archivos
+      async function saveFile() {
+        const text = document.getElementById("note").innerText;
+        const options = {
+          types: [
+            {
+              description: "Archivo de texto",
+              accept: {
+                "text/plain": [".txt"],
+              },
+            },
+          ],
+        };
+
+        try {
+          const handle = await window.showSaveFilePicker(options);
+          const writable = await handle.createWritable();
+          await writable.write(text);
+          await writable.close();
+
+          M.toast({
+            html: "Archivo guardado exitosamente!",
+            classes: "rounded",
+          });
+        } catch (error) {
+          console.error("Error al guardar el archivo:", error);
+          M.toast({ html: "Error al guardar el archivo.", classes: "rounded" });
+        }
+      }
+
+      // Función para exportar el contenido a PDF usando el explorador de archivos
+      async function exportToPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const text = document.getElementById("note").innerText;
+
+        // Dividimos el texto en múltiples líneas para que se ajuste correctamente
+        const lines = doc.splitTextToSize(text, 180);
+
+        // Agregar el texto al documento
+        doc.text(lines, 10, 10);
+
+        try {
+          // Mostrar el explorador de archivos para seleccionar dónde guardar el PDF
+          const fileHandle = await window.showSaveFilePicker({
+            types: [
+              {
+                description: "Archivo PDF",
+                accept: { "application/pdf": [".pdf"] },
+              },
+            ],
+          });
+
+          const writableStream = await fileHandle.createWritable();
+          const pdfBlob = doc.output("blob");
+          await writableStream.write(pdfBlob);
+          await writableStream.close();
+
+          M.toast({ html: "PDF guardado exitosamente!", classes: "rounded" });
+        } catch (error) {
+          console.error("Error al guardar el PDF:", error);
+          M.toast({ html: "Error al guardar el PDF.", classes: "rounded" });
+        }
+      }
+
+      // Función para comprobar si el área de texto está vacía y mostrar/ocultar el placeholder
+      function checkPlaceholder() {
+        const note = document.getElementById("note");
+        if (note.innerText.trim() === "") {
+          note.classList.add("placeholder");
+        } else {
+          note.classList.remove("placeholder");
+        }
+      }
+
+      // Eventos para manejar el placeholder dinámico
+      document
+        .getElementById("note")
+        .addEventListener("focus", checkPlaceholder);
+      document
+        .getElementById("note")
+        .addEventListener("input", checkPlaceholder);
+      document
+        .getElementById("note")
+        .addEventListener("blur", checkPlaceholder);
+    </script>
+  </body>
+</html>
